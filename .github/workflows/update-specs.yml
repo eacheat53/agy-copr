@@ -50,18 +50,20 @@ jobs:
           git push
 
       - name: Install copr-cli
-        if: steps.git-check.outputs.changes == 'true'
+        if: steps.git-check.outputs.changes == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         run: pip install copr-cli
 
       - name: Write COPR config
-        if: steps.git-check.outputs.changes == 'true'
+        if: steps.git-check.outputs.changes == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         run: |
           mkdir -p ~/.config
           echo "${{ secrets.COPR_CONFIG }}" > ~/.config/copr
 
       - name: Trigger COPR builds
-        if: steps.git-check.outputs.changes == 'true'
+        if: steps.git-check.outputs.changes == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         run: |
+          COPR_PROJECT="frugally7417/agy"
+          HEAD_SHA=$(git rev-parse HEAD)
           VERSION_AGY=$(grep -E '(%global package_version|Version:)' antigravity.spec | awk '{print $NF}' | grep -E '^[0-9]' | head -n1)
           VERSION_CLI=$(grep -E '(%global package_version|Version:)' antigravity-cli.spec | awk '{print $NF}' | grep -E '^[0-9]' | head -n1)
           VERSION_IDE=$(grep -E '(%global package_version|Version:)' antigravity-ide.spec | awk '{print $NF}' | grep -E '^[0-9]' | head -n1)
@@ -71,16 +73,16 @@ jobs:
             local version=$2
             local spec_file=$3
 
-            BUILDS=$(copr-cli list-builds n0va-bot/agy --output-format json)
+            BUILT_VER=$(copr-cli get-package "$COPR_PROJECT" --name "$package_name" --with-latest-succeeded-build --output-format json 2>/dev/null | jq -r '.latest_succeeded_build.source_package.version // empty' | cut -d- -f1 || true)
 
-            if echo "$BUILDS" | grep -q "\"name\": \"$package_name\",\"state\": \"succeeded\""; then
-              echo "Package $package_name already has a successful build, skipping..."
+            if [ "$BUILT_VER" = "$version" ]; then
+              echo "Package $package_name ($version) already has a successful build, skipping..."
             else
-              echo "Triggering build for $package_name..."
-              copr-cli buildscm n0va-bot/agy \
-                --clone-url ${{ github.server_url }}/${{ github.repository }} \
-                --commit ${{ github.sha }} \
-                --spec $spec_file \
+              echo "Triggering build for $package_name ($version, latest built: ${BUILT_VER:-none})..."
+              copr-cli buildscm "$COPR_PROJECT" \
+                --clone-url "${{ github.server_url }}/${{ github.repository }}" \
+                --commit "$HEAD_SHA" \
+                --spec "$spec_file" \
                 --type git \
                 --nowait
             fi
