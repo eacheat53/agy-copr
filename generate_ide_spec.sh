@@ -1,12 +1,26 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-# Fetch from AUR
-PKGBUILD=$(curl -s "https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=antigravity-ide")
+# Fetch from official Antigravity download page
+HTML=$(curl -fsSL "https://antigravity.google/download")
 
-# Extract version and build
-PKGVER=$(echo "$PKGBUILD" | grep "^pkgver=" | cut -d= -f2)
-BUILD=$(echo "$PKGBUILD" | grep "^_build=" | cut -d= -f2)
+# Extract version and build from linux-x64 Antigravity IDE tarball URL
+IDE_URL=$(echo "$HTML" | grep -oE 'https://[^"'\'' <>]+/release2/j0qc3/antigravity/stable/[0-9.]+-[0-9]+/linux-x64/Antigravity%20IDE\.tar\.gz' | head -n1)
+VER_BUILD=$(echo "$IDE_URL" | sed -E 's#.*/stable/([0-9.]+-[0-9]+)/linux-x64/.*#\1#')
+PKGVER="${VER_BUILD%-*}"
+BUILD="${VER_BUILD#*-}"
+
+if [ -z "$PKGVER" ] || [ -z "$BUILD" ] || [ "$PKGVER" = "$VER_BUILD" ]; then
+  echo "Failed to extract antigravity-ide version and build from official download page" >&2
+  exit 1
+fi
+
+CUR_VER=$(grep -m1 '^%global package_version ' antigravity-ide.spec 2>/dev/null | awk '{print $3}' || true)
+CUR_BUILD=$(grep -m1 '^%global upstream_build ' antigravity-ide.spec 2>/dev/null | awk '{print $3}' || true)
+if [ "$CUR_VER" = "$PKGVER" ] && [ "$CUR_BUILD" = "$BUILD" ]; then
+  CHANGELOG_DATE=$(grep -A1 '^%changelog' antigravity-ide.spec 2>/dev/null | sed -n '2s/^\* \([A-Za-z]* [A-Za-z]* [0-9 ]* [0-9]*\) .*/\1/p' || true)
+fi
+CHANGELOG_DATE=${CHANGELOG_DATE:-$(LC_ALL=C date "+%a %b %d %Y")}
 
 # Generate spec file
 cat <<EOF > antigravity-ide.spec
@@ -26,8 +40,8 @@ Summary:        Google Antigravity IDE - An agentic development platform
 
 License:        LicenseRef-Google-Antigravity
 URL:            https://antigravity.google/
-Source0:        https://dl.google.com/release2/j0qc3/antigravity/stable/%{version}-%{upstream_build}/linux-x64/Antigravity%%20IDE.tar.gz#/antigravity-ide-%{version}-x86_64.tar.gz
-Source1:        https://dl.google.com/release2/j0qc3/antigravity/stable/%{version}-%{upstream_build}/linux-arm/Antigravity%%20IDE.tar.gz#/antigravity-ide-%{version}-aarch64.tar.gz
+Source0:        https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/%{version}-%{upstream_build}/linux-x64/Antigravity%%20IDE.tar.gz#/antigravity-ide-%{version}-x86_64.tar.gz
+Source1:        https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/%{version}-%{upstream_build}/linux-arm/Antigravity%%20IDE.tar.gz#/antigravity-ide-%{version}-aarch64.tar.gz
 Source10:       antigravity-ide.sh
 Source11:       antigravity-ide.desktop
 Source12:       antigravity-ide-url-handler.desktop
@@ -113,7 +127,7 @@ install -Dpm0644 %{SOURCE20} %{buildroot}%{_datadir}/pixmaps/%{name}.png
 %{_datadir}/pixmaps/%{name}.png
 
 %changelog
-* $(date "+%a %b %d %Y") n0va <n0va@example.com> - ${PKGVER}-1
+* ${CHANGELOG_DATE} n0va <n0va@example.com> - ${PKGVER}-1
 - Update to version ${PKGVER}
 EOF
 

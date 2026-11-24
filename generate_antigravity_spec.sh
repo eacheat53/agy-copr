@@ -1,12 +1,25 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-# Fetch from AUR
-PKGBUILD=$(curl -s "https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=antigravity")
+# Fetch from official Antigravity download page
+HTML=$(curl -fsSL "https://antigravity.google/download")
 
-# Extract version and build
-PKGVER=$(echo "$PKGBUILD" | grep "^pkgver=" | cut -d= -f2)
-BUILD=$(echo "$PKGBUILD" | grep "^_build=" | cut -d= -f2)
+# Extract version and build from linux-x64 Antigravity tarball URL
+VER_BUILD=$(echo "$HTML" | grep -oE 'https://storage\.googleapis\.com/antigravity-public/antigravity-hub/[0-9.]+-[0-9]+/linux-x64/Antigravity\.tar\.gz' | head -n1 | sed -E 's#.*/antigravity-hub/([0-9.]+-[0-9]+)/linux-x64/.*#\1#')
+PKGVER="${VER_BUILD%-*}"
+BUILD="${VER_BUILD#*-}"
+
+if [ -z "$PKGVER" ] || [ -z "$BUILD" ] || [ "$PKGVER" = "$VER_BUILD" ]; then
+  echo "Failed to extract antigravity version and build from official download page" >&2
+  exit 1
+fi
+
+CUR_VER=$(grep -m1 '^%global package_version ' antigravity.spec 2>/dev/null | awk '{print $3}' || true)
+CUR_BUILD=$(grep -m1 '^%global upstream_build ' antigravity.spec 2>/dev/null | awk '{print $3}' || true)
+if [ "$CUR_VER" = "$PKGVER" ] && [ "$CUR_BUILD" = "$BUILD" ]; then
+  CHANGELOG_DATE=$(grep -A1 '^%changelog' antigravity.spec 2>/dev/null | sed -n '2s/^\* \([A-Za-z]* [A-Za-z]* [0-9 ]* [0-9]*\) .*/\1/p' || true)
+fi
+CHANGELOG_DATE=${CHANGELOG_DATE:-$(LC_ALL=C date "+%a %b %d %Y")}
 
 # Generate spec file
 cat <<EOF > antigravity.spec
@@ -101,7 +114,7 @@ install -Dpm0644 %{buildroot}/opt/Antigravity/LICENSES.chromium.html %{buildroot
 %{_datadir}/pixmaps/%{name}.png
 
 %changelog
-* $(date "+%a %b %d %Y") n0va <n0va@example.com> - ${PKGVER}-1
+* ${CHANGELOG_DATE} n0va <n0va@example.com> - ${PKGVER}-1
 - Update to version ${PKGVER}
 EOF
 

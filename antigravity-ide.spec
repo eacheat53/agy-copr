@@ -4,8 +4,8 @@
 %global _build_id_links none
 %global __requires_exclude libcurl.*CURL_OPENSSL
 
-%global package_version 2.7.0
-%global upstream_build 4507555968450560
+%global package_version 2.8.0
+%global upstream_build 6733682917113856
 
 Name:           antigravity-ide
 Version:        %{package_version}
@@ -14,8 +14,8 @@ Summary:        Google Antigravity IDE - An agentic development platform
 
 License:        LicenseRef-Google-Antigravity
 URL:            https://antigravity.google/
-Source0:        https://dl.google.com/release2/j0qc3/antigravity/stable/%{version}-%{upstream_build}/linux-x64/Antigravity%%20IDE.tar.gz#/antigravity-ide-%{version}-x86_64.tar.gz
-Source1:        https://dl.google.com/release2/j0qc3/antigravity/stable/%{version}-%{upstream_build}/linux-arm/Antigravity%%20IDE.tar.gz#/antigravity-ide-%{version}-aarch64.tar.gz
+Source0:        https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/%{version}-%{upstream_build}/linux-x64/Antigravity%%20IDE.tar.gz#/antigravity-ide-%{version}-x86_64.tar.gz
+Source1:        https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/%{version}-%{upstream_build}/linux-arm/Antigravity%%20IDE.tar.gz#/antigravity-ide-%{version}-aarch64.tar.gz
 Source10:       antigravity-ide.sh
 Source11:       antigravity-ide.desktop
 Source12:       antigravity-ide-url-handler.desktop
@@ -101,5 +101,5 @@ install -Dpm0644 %{SOURCE20} %{buildroot}%{_datadir}/pixmaps/%{name}.png
 %{_datadir}/pixmaps/%{name}.png
 
 %changelog
-* Mon Nov 23 2026 n0va <n0va@example.com> - 2.7.0-1
-- Update to version 2.7.0
+* Tue Nov 24 2026 n0va <n0va@example.com> - 2.8.0-1
+- Update to version 2.8.0

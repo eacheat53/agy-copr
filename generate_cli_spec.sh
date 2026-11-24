@@ -1,16 +1,21 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 BASE_URL="https://antigravity-cli-auto-updater-974169037036.us-central1.run.app"
 
 # Fetch manifests
-AMD64_MANIFEST=$(curl -s "$BASE_URL/manifests/linux_amd64.json")
-ARM64_MANIFEST=$(curl -s "$BASE_URL/manifests/linux_arm64.json")
+AMD64_MANIFEST=$(curl -fsSL "$BASE_URL/manifests/linux_amd64.json")
+ARM64_MANIFEST=$(curl -fsSL "$BASE_URL/manifests/linux_arm64.json")
 
 # Extract info using jq
 VERSION=$(echo "$AMD64_MANIFEST" | jq -r '.version')
 URL_AMD64=$(echo "$AMD64_MANIFEST" | jq -r '.url')
 URL_ARM64=$(echo "$ARM64_MANIFEST" | jq -r '.url')
+
+if [ -z "$VERSION" ] || [ "$VERSION" = "null" ] || [ -z "$URL_AMD64" ] || [ "$URL_AMD64" = "null" ] || [ -z "$URL_ARM64" ] || [ "$URL_ARM64" = "null" ]; then
+  echo "Failed to extract antigravity-cli manifest fields" >&2
+  exit 1
+fi
 
 # Generate spec file
 cat <<EOF > antigravity-cli.spec
